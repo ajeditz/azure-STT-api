@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Speech Recognition</title>
+</head>
+<body>
+    <h1>Real-Time Speech Transcription</h1>
+    <button onclick="start_microphone()">Start Recording</button>
+    <button onclick="stop_microphone()">Stop Recording</button>
+
+    <!-- Transcription Display Area -->
+    <div id="transcription" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; height: 200px; overflow-y: auto;"></div>
+
+    <script>
+        let mediaRecorder;
+        let ws;
+
+        const start_microphone = async () => {
+            ws = new WebSocket("ws://localhost:8000/ws");
+            const transcriptionDiv = document.getElementById("transcription");
+            transcriptionDiv.innerHTML = ""; // Clear previous transcriptions
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs:opus' });
+
+            ws.onopen = () => {
+                console.log("WebSocket connection opened.");
+            };
+
+            ws.onmessage = (e) => {
+                // Append the received message to the transcription display
+                const newText = document.createElement("p");
+                newText.textContent = e.data;
+                transcriptionDiv.appendChild(newText);
+                transcriptionDiv.scrollTop = transcriptionDiv.scrollHeight; // Auto-scroll to the bottom
+            };
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+                    ws.send(e.data);
+                }
+            };
+
+            mediaRecorder.start(500);
+        };
+
+        const stop_microphone = () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            if (ws) {
+                ws.close();
+                ws.onclose = () => {
+                    console.log("WebSocket connection closed.");
+                };
+            }
+        };
+    </script>
+</body>
+</html>
