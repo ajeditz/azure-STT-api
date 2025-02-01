@@ -18,7 +18,7 @@
         let ws;
 
         const start_microphone = async () => {
-            ws = new WebSocket("ws://localhost:8000/ws");
+            ws = new WebSocket("ws://0.0.0.0:8000/ws");
             const transcriptionDiv = document.getElementById("transcription");
             transcriptionDiv.innerHTML = ""; // Clear previous transcriptions
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -42,7 +42,7 @@
                 }
             };
 
-            mediaRecorder.start(500);
+            mediaRecorder.start(100);
         };
 
         const stop_microphone = () => {

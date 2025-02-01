@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 import azure.cognitiveservices.speech as speechsdk
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import os
 import asyncio
@@ -19,6 +20,15 @@ class bcolors: # Only to apply colors to the prints
     UNDERLINE = '\033[4m'
 
 app = FastAPI() # Create a new FastAPI app
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Update with specific domains in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Speech key and region from your Azure Speech Recognition service
 speech_key = os.getenv("SPEECH_KEY")

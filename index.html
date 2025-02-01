@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Speech Recognition with Socket.IO</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <h1>Real-Time Speech Transcription 123</h1>
+    <button onclick="startRecording()">Start Recording</button>
+    <button onclick="stopRecording()">Stop Recording</button>
+
+    <div id="transcription" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; height: 200px; overflow-y: auto;"></div>
+
+    <script>
+        let mediaRecorder;
+        let socket;
+        let isRecording = false;
+
+        function initializeSocket() {
+            socket = io('http://localhost:8000/', {
+                transports: ['websocket'],
+                path: '/socket.io'
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+
+            socket.on('transcription', (data) => {
+                console.log('Received transcription:', data);
+                const transcriptionDiv = document.getElementById('transcription');
+                const newText = document.createElement('p');
+                newText.textContent = data.text || data;  // Handle both formats
+                transcriptionDiv.appendChild(newText);
+                transcriptionDiv.scrollTop = transcriptionDiv.scrollHeight;
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                stopRecording();
+            });
+        }
+
+        async function startRecording() {
+            if (isRecording) return;
+            
+            try {
+                // Initialize Socket.IO connection if not already connected
+                if (!socket) {
+                    initializeSocket();
+                }
+
+                // Get audio stream
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs:opus' });
+
+                // Clear previous transcriptions
+                document.getElementById('transcription').innerHTML = '';
+
+                // Tell server to start recognition
+                socket.emit('start_recognition');
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0 && socket.connected) {
+                        // Convert blob to array buffer and send to server
+                        event.data.arrayBuffer().then(buffer => {
+                            socket.emit('audio_data', buffer);
+                        });
+                    }
+                };
+
+                mediaRecorder.start(100);
+                isRecording = true;
+                console.log('Recording started');
+            } catch (error) {
+                console.error('Error starting recording:', error);
+            }
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+
+            isRecording = false;
+            console.log('Recording stopped');
+        }
+    </script>
+</body>
+</html>
